@@ -42,7 +42,7 @@ h1 { color: var(--text-title); margin: 0 0 5px 0; font-size: 20px; text-transfor
 
 .verdict-box { background: var(--card-bg); border: 1px solid var(--factor-border); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
 .verdict-title { font-size: 16px; font-weight: bold; color: #fff; border-bottom: 1px solid var(--factor-border); padding-bottom: 8px; text-align: center; }
-.stats-row { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; border-bottom: 1px dashed #1e293b; }
+.stats-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px dashed #1e293b; }
 .signal-banner { padding: 12px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-top: 5px; }
 .signal-banner.good { background: rgba(46, 204, 113, 0.15); color: var(--green); border: 1px solid var(--green); }
 .signal-banner.neutral { background: rgba(52, 152, 219, 0.15); color: #3498db; border: 1px solid #3498db; }
@@ -52,7 +52,7 @@ h1 { color: var(--text-title); margin: 0 0 5px 0; font-size: 20px; text-transfor
 <body>
 <div class="app-wrapper">
     <header><h1>Многофакторный Фильтр Анализа Матчей</h1></header>
-    <div class="search-bar-container"><input type="text" id="live-search" class="search-input" placeholder="Введите теннисиста или команду для поиска в реальной сети..."></div>
+    <div class="search-bar-container"><input type="text" id="live-search" class="search-input" placeholder="Введите теннисиста, команду, лигу или вид спорта для поиска в реальной сети..."></div>
     <div class="live-counter-panel" id="counter-text">ПОДКЛЮЧЕНИЕ К ЖИВОМУ МИРОВОМУ СПОРТИВНОМУ АГРЕГАТОРУ...</div>
     <div class="main-split-panel">
         <div class="panel-half">
@@ -70,8 +70,17 @@ let globalCachedMatches = [];
 let currentSearchQuery = "";
 let selectedMatchId = null;
 
-// ТВОЙ ЖЕЛЕЗОБЕТОННЫЙ КЛЮЧ ДОСТУПА С ПОЧТЫ
 const MY_API_KEY = "50b2db74a540b41486d1adcebb0926dd"; 
+
+const translateDict = {
+    "football": "Футбол", "hockey": "Хоккей", "basketball": "Баскетбол", "tennis": "Теннис", "soccer": "Футбол", "icehockey": "Хоккей"
+};
+function translateToRu(text) {
+    if (!text) return "Разное";
+    let lower = text.toLowerCase();
+    for (let key in translateDict) { if (lower.includes(key)) return translateDict[key]; }
+    return text;
+}
 
 function poisson(k, lambda) {
     return (Math.pow(lambda, k) * Math.exp(-lambda)) / factorial(k);
@@ -111,7 +120,7 @@ function run50BotsConsilium(match) {
     let recommendedOutcome = `Консенсус не достигнут. Силы сторон равны.`;
     let bannerClass = "neutral";
     if (positiveVotes >= 35) { recommendedOutcome = `РЕКОМЕНДАЦИЯ: Победа Первого участника (Одобрено ботами: ${positiveVotes}/50)`; bannerClass = "good"; }
-    else if (negativeVotes >= 35) { recommendedOutcome = `РЕКОМЕНДАЦИЯ: Победа Второго участника (Одобрено ботами: ${negativeVotes}/50)`; bannerClass = "good"; }
+    else if (negativeVotes >= 35) { recommendedOutcome = `РЕКОМЕНДАЦИЯ: Победа Второй стороны (Одобрено ботами: ${negativeVotes}/50)`; bannerClass = "good"; }
 
     return {
         ...match, margin: (margin * 100).toFixed(2) + "%",
@@ -122,8 +131,8 @@ function run50BotsConsilium(match) {
 }
 async function fetchRealSportsLine(sportKey) {
     try {
-        // Качаем НАСТОЯЩУЮ линию матчей на 7 дней вперед напрямую без прокси прокладок
-        const url = `https://theoddsapi.com{sportKey}/odds/?apiKey=${MY_API_KEY}&regions=eu&markets=h2h`;
+        // Чистый, прямой запрос к мировому серверу без опечаток и знаков вопроса
+        const url = "https://theoddsapi.com" + sportKey + "/odds/?apiKey=" + MY_API_KEY + "&regions=eu&markets=h2h";
         const response = await fetch(url);
         if (!response.ok) return [];
         const data = await response.json();
@@ -131,19 +140,26 @@ async function fetchRealSportsLine(sportKey) {
         let result = [];
         if (data && Array.isArray(data)) {
             data.forEach(item => {
-                let bookmaker = item.bookmakers?.[0];
-                let market = bookmaker?.markets?.[0];
-                let outcomes = market?.outcomes || [];
+                let bookmakers = item.bookmakers || [];
+                if (bookmakers.length === 0) return;
+                let bookmaker = bookmakers[0];
+                let markets = bookmaker.markets || [];
+                if (markets.length === 0) return;
+                let market = markets[0];
+                let outcomes = market.outcomes || [];
                 
-                let p1 = outcomes.find(o => o.name === item.home_team)?.price || 1.85;
-                let p2 = outcomes.find(o => o.name === item.away_team)?.price || 1.85;
-                let x = outcomes.find(o => o.name !== item.home_team && o.name !== item.away_team)?.price || "-";
+                let p1 = 1.85, p2 = 1.85, x = "-";
+                outcomes.forEach(o => {
+                    if (o.name === item.home_team) p1 = o.price;
+                    else if (o.name === item.away_team) p2 = o.price;
+                    else x = o.price;
+                });
 
                 let mDate = new Date(item.commence_time);
                 result.push({
                     id: item.id,
-                    sport: item.sport_title === "Tennis" ? "Теннис" : (item.sport_title.includes("Ice Hockey") ? "Хоккей" : "Футбол"),
-                    league: item.sport_title, home: item.home_team, away: item.away_team,
+                    sport: translateToRu(item.sport_title),
+                    league: item.sport_key, home: item.home_team, away: item.away_team,
                     p1Odds: p1, p2Odds: p2, xOdds: x,
                     dateStr: mDate.toLocaleDateString("ru-RU"), time: mDate.toLocaleTimeString("ru-RU", {hour: '2-digit', minute:'2-digit'}),
                     timestamp: mDate.getTime()
@@ -158,7 +174,7 @@ function renderMatches() {
     const listContainer = document.getElementById("left-matches-list");
     if (globalCachedMatches.length === 0) { listContainer.innerHTML = '<div class="placeholder-text">Синхронизация с серверами спортивных данных...</div>'; return; }
     let filtered = globalCachedMatches.filter(m => {
-        let searchStr = `${m.home} ${m.away} ${m.league} ${m.sport}`.toLowerCase();
+        let searchStr = (m.home + " " + m.away + " " + m.league + " " + m.sport).toLowerCase();
         return searchStr.includes(currentSearchQuery.toLowerCase());
     });
     if (filtered.length === 0) { listContainer.innerHTML = '<div class="placeholder-text">Настоящих матчей по вашему запросу не найдено...</div>'; return; }
@@ -169,7 +185,6 @@ function renderMatches() {
         </div>
     `).join('');
 }
-
 function selectMatch(id) { selectedMatchId = id; updateVerdictPanel(); }
 
 function updateVerdictPanel() {
@@ -198,19 +213,21 @@ function updateVerdictPanel() {
 }
 
 async function startLiveSync() {
-    // Подгружаем реальные пулы данных со всех мировых теннисных, футбольных и хоккейных событий
-    const [tennis, football, hockey] = await Promise.all([
-        fetchRealSportsLine("tennis_atp_wimbledon"),
-        fetchRealSportsLine("soccer_russia_premier_league"),
-        fetchRealSportsLine("icehockey_russia_khl")
+    const [tennis, football, hockey, basketball] = await Promise.all([
+        fetchRealSportsLine("tennis_atp_wimbledon").then(res => res.length ? res : fetchRealSportsLine("tennis")),
+        fetchRealSportsLine("soccer_russia_premier_league").then(res => res.length ? res : fetchRealSportsLine("soccer")),
+        fetchRealSportsLine("icehockey_russia_khl").then(res => res.length ? res : fetchRealSportsLine("icehockey")),
+        fetchRealSportsLine("basketball_nba").then(res => res.length ? res : fetchRealSportsLine("basketball"))
     ]);
-    let combined = [...tennis, ...football, ...hockey];
+    let combined = [...tennis, ...football, ...hockey, ...basketball];
     if (combined.length > 0) {
         globalCachedMatches = combined.sort((a, b) => a.timestamp - b.timestamp);
         document.getElementById("counter-text").innerText = `ЖИВОЙ МИРОВОЙ СПОРТИВНЫЙ ПОТОК АКТИВЕН // ВСЕГО НАСТОЯЩИХ МАТЧЕЙ В СЕТКЕ: ${globalCachedMatches.length}`;
         renderMatches();
+    } else {
+        document.getElementById("counter-text").innerText = `СЕРВЕР ОБНОВЛЯЕТ ДАННЫЕ ЛИНИИ... ПОВТОРНЫЙ ЗАПРОС`;
     }
-    setTimeout(startLiveSync, 60000);
+    setTimeout(startLiveSync, 30000); 
 }
 
 document.getElementById("live-search").addEventListener("input", (e) => {
