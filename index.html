@@ -236,10 +236,8 @@ async function startLiveSync() {
         fetchWinlineData("live/short"),
         fetchWinlineData("prematch/short")
     ]);
-    
     let combinedRaw = [];
     const sportMap = { 1: "football", 2: "hockey", 3: "basketball", 4: "tennis" };
-
     const parseData = (data, isLive) => {
         if (data && data.stages) {
             for (let stage of data.stages) {
@@ -257,19 +255,15 @@ async function startLiveSync() {
             }
         }
     };
-
-    parseData(liveData, true);
-    parseData(prematchData, false);
-
+    parseData(liveData, true); parseData(prematchData, false);
     if (combinedRaw.length > 0) {
         const sorted = combinedRaw.sort((a, b) => a.timestamp - b.timestamp);
         globalCachedMatches = sorted.map(m => analyzeMatchWith50Bots(m));
-        document.getElementById("counter-text").innerText = `СИНХРОНИЗАЦИЯ ПОТОКА АКТИВНА // ВСЕГО НАСТОЯЩИХ МАТЧЕЙ В ПОТОКЕ (НЕДЕЛЯ): ${globalCachedMatches.length}`;
+        document.getElementById("counter-text").innerText = `СИНХРОНИЗАЦИЯ ПОТОКА АКТИВНА // ВСЕГО НАСТОЯЩИХ МАТЧЕЙ (НЕДЕЛЯ): ${globalCachedMatches.length}`;
         renderMatches();
     }
-    setTimeout(startLiveSync, 8000); // Опрос раз в 8 секунд для защиты от банов хостинга
+    setTimeout(startLiveSync, 9000); // Опрос раз в 9 секунд для стабильности шлюза на бесплатном хостинге
 }
-
 document.getElementById("live-search").addEventListener("input", (e) => {
     currentSearchQuery = e.target.value; renderMatches();
 });
@@ -277,3 +271,4 @@ window.onload = startLiveSync;
 </script>
 </body>
 </html>
+
