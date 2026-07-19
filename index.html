@@ -93,6 +93,7 @@ function factorial(n) {
     if (n === 0 || n === 1) return 1;
     let res = 1; for (let i = 2; i <= n; i++) res *= i; return res;
 }
+
 function analyzeMatchWith50Bots(match) {
     const o = match.odds;
     const isTwoWay = o.X === "-";
@@ -148,13 +149,32 @@ function analyzeMatchWith50Bots(match) {
         verdict: finalStatus === "status-good" ? "СТАВКА" : "ПРОПУСК", verdictText: recommendedOutcome, botStats: { yes: positiveVotes, no: negativeVotes, neutral: neutralVotes }
     };
 }
-
 async function fetchWinlineData(endpoint) {
     try {
-        const url = "https://winline.ru" + endpoint;
+        const url = "https://allorigins.win" + encodeURIComponent("https://winline.ru" + endpoint);
         const response = await fetch(url);
         if (!response.ok) return [];
-        return await response.json();
+        const raw = await response.json();
+        if (!raw || !raw.contents) return [];
+        const data = JSON.parse(raw.contents);
+        
+        let processed = []; const sportMap = { 1: "football", 2: "hockey", 3: "basketball", 4: "tennis" };
+        if (data && data.stages) {
+            for (let stage of data.stages) {
+                let sportId = stage.sportId; if (!sportMap[sportId]) continue;
+                let items = stage.items || [];
+                for (let item of items) {
+                    if (!item.homeTeam || !item.awayTeam) continue;
+                    let outcomes = item.outcomes || {};
+                    processed.push({
+                        id: item.id, sport: sportMap[sportId], league: stage.name || "Разное", home: item.homeTeam.name, away: item.awayTeam.name,
+                        odds: { P1: parseFloat(outcomes["1"]?.value || 1.01), X: outcomes["2"]?.value ? parseFloat(outcomes["2"].value) : "-", P2: parseFloat(outcomes["3"]?.value || 1.01) },
+                        timestamp: item.time?.startTime || Date.now(), dateStr: item.time?.startDateStr || "Сегодня", time: endpoint.includes("live") ? "LIVE" : (item.time?.startTimeStr || "Прематч")
+                    });
+                }
+            }
+        }
+        return processed;
     } catch (e) { return []; }
 }
 
@@ -246,7 +266,7 @@ async function startLiveSync() {
         document.getElementById("counter-text").innerText = `СИНХРОНИЗАЦИЯ ПОТОКА АКТИВНА // ВСЕГО МАТЧЕЙ В ПОТОКЕ (НЕДЕЛЯ): ${globalCachedMatches.length}`;
         renderMatches();
     }
-    setTimeout(startLiveSync, 1000);
+    setTimeout(startLiveSync, 6000);
 }
 
 document.getElementById("live-search").addEventListener("input", (e) => {
