@@ -58,11 +58,11 @@ h1 { color: var(--text-title); margin: 0 0 5px 0; font-size: 20px; text-transfor
 <div class="app-wrapper">
     <header><h1>Многофакторный Фильтр LIVE/Прематч</h1></header>
     <div class="search-bar-container"><input type="text" id="live-search" class="search-input" placeholder="Поиск по команде, лиге или виду спорта..."></div>
-    <div class="live-counter-panel" id="counter-text">ПОДКЛЮЧЕНИЕ К ПРЯМОМУ API WINLINE...</div>
+    <div class="live-counter-panel" id="counter-text">ЗАПУСК СИНХРОНИЗАЦИИ ЛИНИИ WINLINE...</div>
     <div class="main-split-panel">
         <div class="panel-half">
             <div class="column-title">Линия LIVE и Прематч (Сортировка по времени)</div>
-            <div id="left-matches-list"><div class="placeholder-text">Синхронизация потока данных...</div></div>
+            <div id="left-matches-list"><div class="placeholder-text">Ожидание первого ответа от сервера...</div></div>
         </div>
         <div class="panel-half" style="background:#10121a;">
             <div class="column-title">Аналитический Консилиум</div>
@@ -151,7 +151,8 @@ function analyzeMatchWith50Bots(match) {
 }
 async function fetchWinlineData(endpoint) {
     try {
-        const url = "https://allorigins.win" + encodeURIComponent("https://winline.ru" + endpoint);
+        // Запрос к живому API Winline через высокоскоростное облачное зеркало allorigins
+        const url = "https://allorigins.win" + encodeURIComponent("https://winline.ru" + endpoint) + "&nocache=" + Date.now();
         const response = await fetch(url);
         if (!response.ok) return [];
         const raw = await response.json();
@@ -180,7 +181,7 @@ async function fetchWinlineData(endpoint) {
 
 function renderMatches() {
     const listContainer = document.getElementById("left-matches-list");
-    if (globalCachedMatches.length === 0) { listContainer.innerHTML = '<div class="placeholder-text">Загрузка и анализ матчей...</div>'; return; }
+    if (globalCachedMatches.length === 0) { listContainer.innerHTML = '<div class="placeholder-text">Синхронизация потока Winline...</div>'; return; }
 
     let filtered = globalCachedMatches.filter(m => {
         let searchStr = `${m.home} ${m.away} ${m.league} ${m.sport}`.toLowerCase();
@@ -263,10 +264,10 @@ async function startLiveSync() {
     if (combinedRaw.length > 0) {
         const sorted = combinedRaw.sort((a, b) => a.timestamp - b.timestamp);
         globalCachedMatches = sorted.map(m => analyzeMatchWith50Bots(m));
-        document.getElementById("counter-text").innerText = `СИНХРОНИЗАЦИЯ ПОТОКА АКТИВНА // ВСЕГО МАТЧЕЙ В ПОТОКЕ (НЕДЕЛЯ): ${globalCachedMatches.length}`;
+        document.getElementById("counter-text").innerText = `СИНХРОНИЗАЦИЯ ПОТОКА АКТИВНА // ВСЕГО НАСТОЯЩИХ МАТЧЕЙ В ПОТОКЕ (НЕДЕЛЯ): ${globalCachedMatches.length}`;
         renderMatches();
     }
-    setTimeout(startLiveSync, 6000);
+    setTimeout(startLiveSync, 8000); // Опрос раз в 8 секунд для защиты от банов хостинга
 }
 
 document.getElementById("live-search").addEventListener("input", (e) => {
