@@ -53,7 +53,7 @@ h1 { color: var(--text-title); margin: 0 0 5px 0; font-size: 22px; text-transfor
 <body>
 <div class="app-wrapper">
     <header><h1>Многофакторный ИИ-Фильтр Прогнозирования Исходных Маркетов</h1></header>
-    <div class="live-counter-panel" id="counter-text">ПОДКЛЮЧЕНИЕ К ГЛОБАЛЬНОЙ ТЕКСТОВОЙ СПОРТИВНОЙ СЕТИ...</div>
+    <div class="live-counter-panel" id="counter-text">ПОДКЛЮЧЕНИЕ К СПОРТИВНОМУ ФИДУ АВТОПИЛОТА...</div>
     <div class="main-split-panel">
         <div class="panel-left-side">
             <div class="search-bar-container"><input type="text" id="live-search" class="search-input" placeholder="Поиск матча, лиги или игрока в левой колонке..."></div>
@@ -72,7 +72,7 @@ const translateDict = {
     "football": "Футбол", "hockey": "Хоккей", "basketball": "Баскетбол", "tennis": "Теннис", "soccer": "Футбол", "icehockey": "Хоккей"
 };
 function translateToRu(text) {
-    if (!text) return "Разное";
+    if (!text) return "Футбол";
     let lower = text.toLowerCase();
     for (let key in translateDict) { if (lower.includes(key)) return translateDict[key]; }
     return text;
@@ -87,7 +87,6 @@ function factorial(n) {
 }
 
 function run50BotsConsilium(match) {
-    let positiveVotes = 0; let negativeVotes = 0; let neutralVotes = 0;
     const o = match.odds;
     const isTwoWay = o.X === "-";
     
@@ -118,8 +117,8 @@ function run50BotsConsilium(match) {
         scoreHome = Math.round(lambdaHome); scoreAway = Math.round(lambdaAway);
     }
 
-    let totalValue = match.sport === "Теннис" ? 21.5 : (match.sport === "Хоккей" ? 4.5 : (match.sport === "Баскетбол" ? 198.5 : 2.5));
-    let probUnder = 0.48;
+    let totalValue = match.sport === "Теннис" ? 21.5 : (match.sport === "Хоккей" ? 5.5 : (match.sport === "Баскетбол" ? 212.5 : 2.5));
+    let probUnder = 0.50;
     if (maxGoals > 0) {
         probUnder = 0;
         for (let h = 0; h <= maxGoals; h++) {
@@ -129,23 +128,15 @@ function run50BotsConsilium(match) {
     let probOver = 1 - probUnder;
 
     let foraValue = fairP1 > fairP2 ? -1.5 : 1.5;
-    if (match.sport === "Баскетбол") foraValue = fairP1 > fairP2 ? -4.5 : 4.5;
-    let probFora1 = fairP1 > fairP2 ? fairP1 * 0.88 : fairP1 * 1.12;
-
-    for (let botId = 1; botId <= 50; botId++) {
-        if (botId <= 15 && fairP1 > 0.45) positiveVotes++;
-        else if (botId > 15 && botId <= 35 && fairP2 > 0.45) negativeVotes++;
-        else neutralVotes++;
-    }
+    let probFora1 = fairP1 > fairP2 ? fairP1 * 0.90 : fairP1 * 1.10;
 
     let final100PercentVerdict = "X";
-    let maxWinProb = Math.max(fairP1, fairP2, probOver, probUnder, probFora1);
+    let maxWinProb = Math.max(fairP1, fairP2, probOver, probUnder);
 
     if (maxWinProb === fairP1) final100PercentVerdict = "П1";
     else if (maxWinProb === fairP2) final100PercentVerdict = "П2";
     else if (maxWinProb === probOver) final100PercentVerdict = "ТБ " + totalValue;
     else if (maxWinProb === probUnder) final100PercentVerdict = "ТМ " + totalValue;
-    else if (maxWinProb === probFora1) final100PercentVerdict = "ФОРА 1 (" + foraValue + ")";
 
     return {
         ...match, margin: (margin * 100).toFixed(2) + "%",
@@ -158,63 +149,48 @@ function run50BotsConsilium(match) {
 }
 async function startLiveSync() {
     try {
-        // Подключаемся к разрешенной текстовой базе данных расписаний Google Sports на GitHub Pages без CORS блокировок
-        const response = await fetch("https://githubusercontent.com");
-        if (!response.ok) {
-            document.getElementById("counter-text").innerText = "ОБНОВЛЕНИЕ ДАННЫХ ИНТЕРНЕТ-КАНАЛА...";
-            return;
-        }
+        const response = await fetch("line.json?nocache=" + new Date().getTime());
+        if (!response.ok) return;
         const data = await response.json();
         
         let result = [];
         if (data && Array.isArray(data)) {
             data.forEach((item, index) => {
                 let mDate = new Date(item.commence_time || Date.now());
-                let p1 = item.p1 || 1.95;
-                let p2 = item.p2 || 1.85;
-                let x = item.x || "-";
-
                 result.push({
-                    id: item.id || "real_" + index,
-                    sport: translateToRu(item.sport_title || "Футбол"),
-                    league: item.sport_key || "Мировой чемпионат",
+                    id: item.id || "m_" + index,
+                    sport: translateToRu(item.sport_title),
+                    league: item.sport_key || "Турнир",
                     home: item.home_team || "Команда 1",
                     away: item.away_team || "Команда 2",
-                    odds: { P1: parseFloat(p1), X: x === "-" ? "-" : parseFloat(x), P2: parseFloat(p2) },
+                    odds: { P1: parseFloat(item.p1 || 1.9), X: item.x === "-" ? "-" : parseFloat(item.x || 3.2), P2: parseFloat(item.p2 || 1.9) },
                     dateStr: mDate.toLocaleDateString("ru-RU"),
-                    time: "LIVE",
-                    timestamp: mDate.getTime()
+                    time: "МАТЧ"
                 });
             });
         }
 
         if (result.length > 0) {
-            globalCachedMatches = result.sort((a, b) => a.timestamp - b.timestamp);
-            document.getElementById("counter-text").innerText = `ЖИВОЙ МИРОВОЙ СПОРТИВНЫЙ ПОТОК АКТИВЕН // ВСЕГО НАСТОЯЩИХ МАТЧЕЙ В СЕТКЕ: ${globalCachedMatches.length}`;
+            globalCachedMatches = result;
+            document.getElementById("counter-text").innerText = `АВТОПИЛОТ АКТИВЕН // ВСЕГО НАСТОЯЩИХ МАТЧЕЙ В СЕТКЕ: ${globalCachedMatches.length}`;
             renderMatches();
-        } else {
-            document.getElementById("counter-text").innerText = "ЛИНИЯ ОБНОВЛЯЕТСЯ... СИНХРОНИЗАЦИЯ ПОТОКА";
         }
     } catch (e) {
-        document.getElementById("counter-text").innerText = "ОБНОВЛЕНИЕ ТЕКСТОВЫХ БАЗ ИНТЕРНЕТА...";
+        document.getElementById("counter-text").innerText = "ОБНОВЛЕНИЕ ДАННЫХ ЛИНИИ РОБОТОМ...";
     }
-    setTimeout(startLiveSync, 30000); 
 }
 
 function renderMatches() {
     const listContainer = document.getElementById("left-matches-list");
-    if (!globalCachedMatches || globalCachedMatches.length === 0) { 
-        listContainer.innerHTML = '<div class="placeholder-text">Линия обновляется... Ожидание ответа от спортивного фида.</div>'; 
-        return; 
-    }
+    if (!globalCachedMatches || globalCachedMatches.length === 0) return;
     let filtered = globalCachedMatches.filter(m => {
         let searchStr = (m.home + " " + m.away + " " + m.league + " " + m.sport).toLowerCase();
         return searchStr.includes(currentSearchQuery.toLowerCase());
     });
-    if (filtered.length === 0) { listContainer.innerHTML = '<div class="placeholder-text">Совпадений по поиску не найдено...</div>'; return; }
+    if (filtered.length === 0) { listContainer.innerHTML = '<div class="placeholder-text">Матчи не найдены...</div>'; return; }
     listContainer.innerHTML = filtered.map(m => `
         <div class="match-card" onclick="selectMatch('${m.id}')">
-            <div class="match-header"><span>${m.sport.toUpperCase()} | ${m.league}</span><strong>${m.dateStr} — ${m.time}</strong></div>
+            <div class="match-header"><span>${m.sport.toUpperCase()} | ${m.league}</span><strong>${m.dateStr}</strong></div>
             <div class="teams">${m.home} — ${m.away}</div>
         </div>
     `).join('');
@@ -249,14 +225,10 @@ function updateVerdictPanel() {
                 <div class="stats-row"><span>Тотал меньше (ТМ ${match.tValue}):</span><strong>${match.tUnder}</strong></div>
             </div>
             <div class="market-section">
-                <div class="market-title">Фора</div>
-                <div class="stats-row"><span>Фора 1 (${match.fValue}):</span><strong>${match.fProb}</strong></div>
-            </div>
-            <div class="market-section">
                 <div class="market-title">Математический Точный Счёт</div>
                 <div class="stats-row"><span>Прогноз по сетам/голам:</span><strong style="color:var(--winline-orange); font-size:16px;">${match.exactScore}</strong></div>
             </div>
-            <div class="signal-banner good">${match.botFinalVerdict}</div>
+            <div class="signal-banner good">РЕКОМЕНДАЦИЯ: ${match.botFinalVerdict}</div>
         </div>
     `;
 }
