@@ -1,0 +1,28 @@
+name: Auto Update Sport Line
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Робот сам просыпается и собирает матчи каждые 30 минут
+  workflow_dispatch: # Кнопка для ручного запуска в один клик
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Проверка репозитория
+      uses: actions/checkout@v3
+
+    - name: Настройка Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Запуск робота-парсера
+      run: python smart_robot.py
+
+    - name: Автоматическое сохранение файла line.json на сайт
+      run: |
+        git config --global user.name "GitHub Action Robot"
+        git config --global user.email "action@github.com"
+        git add line.json
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Робот: авто-обновление спортивной линии" && git push)
