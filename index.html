@@ -105,6 +105,7 @@ function run50BotsConsilium(match) {
     let scoreHome = 0; let scoreAway = 0;
     let totalValue = 2.5;
     let probUnder = 0.50;
+    let highProb = 0;
 
     if (isTennis) {
         scoreHome = fairP1 > fairP2 ? 2 : 1;
@@ -113,7 +114,6 @@ function run50BotsConsilium(match) {
         probUnder = fairP1 > 0.6 || fairP2 > 0.6 ? 0.58 : 0.42;
     } else {
         let maxGoals = (match.sport === "Баскетбол") ? 0 : 4;
-        let highProb = 0;
         if (maxGoals > 0) {
             for (let h = 0; h <= maxGoals; h++) {
                 for (let a = 0; a <= maxGoals; a++) {
@@ -148,88 +148,101 @@ function run50BotsConsilium(match) {
         botFinalVerdict: final100PercentVerdict
     };
 }
-<script>
-let globalCachedMatches = [];
-let currentSearchQuery = "";
-let selectedMatchId = null;
-
-const translateDict = {
-    "football": "Футбол", "hockey": "Хоккей", "basketball": "Баскетбол", "tennis": "Теннис", "soccer": "Футбол", "icehockey": "Хоккей"
-};
-function translateToRu(text) {
-    if (!text) return "Футбол";
-    let lower = text.toLowerCase();
-    for (let key in translateDict) { if (lower.includes(key)) return translateDict[key]; }
-    return text;
-}
-
-function poisson(k, lambda) {
-    return (Math.pow(lambda, k) * Math.exp(-lambda)) / factorial(k);
-}
-function factorial(n) {
-    if (n === 0 || n === 1) return 1;
-    let res = 1; for (let i = 2; i <= n; i++) res *= i; return res;
-}
-
-function run50BotsConsilium(match) {
-    const o = match.odds;
-    const isTennis = match.sport === "Теннис";
-    const isTwoWay = o.X === "-" || isTennis;
-    
-    let margin = isTwoWay ? ((1 / o.P1) + (1 / o.P2) - 1) : ((1 / o.P1) + (1 / o.X) + (1 / o.P2) - 1);
-    let sumImplied = isTwoWay ? ((1 / o.P1) + (1 / o.P2)) : ((1 / o.P1) + (1 / o.X) + (1 / o.P2));
-    
-    let fairP1 = (1 / o.P1) / sumImplied;
-    let fairP2 = (1 / o.P2) / sumImplied;
-    let fairX = isTwoWay ? 0 : ((1 / o.X) / sumImplied);
-
-    let lambdaHome = fairP1 * 2.4; let lambdaAway = fairP2 * 1.9;
-    if (match.sport === "Хоккей") { lambdaHome = fairP1 * 4.2; lambdaAway = fairP2 * 3.5; }
-    if (match.sport === "Баскетбол") { lambdaHome = fairP1 * 102; lambdaAway = fairP2 * 96; }
-
-    let scoreHome = 0; let scoreAway = 0;
-    let totalValue = 2.5;
-    let probUnder = 0.50;
-
-    if (isTennis) {
-        scoreHome = fairP1 > fairP2 ? 2 : 1;
-        scoreAway = scoreHome === 2 ? 0 : 2;
-        totalValue = 21.5;
-        probUnder = fairP1 > 0.6 || fairP2 > 0.6 ? 0.58 : 0.42;
-    } else {
-        let maxGoals = (match.sport === "Баскетбол") ? 0 : 4;
-        let highProb = 0;
-        if (maxGoals > 0) {
-            for (let h = 0; h <= maxGoals; h++) {
-                for (let a = 0; a <= maxGoals; a++) {
-                    let p = poisson(h, lambdaHome) * poisson(a, lambdaAway);
-                    if (p > highProb) { highProb = p; scoreHome = h; scoreAway = a; }
-                }
-            }
-            probUnder = 0;
-            for (let h = 0; h <= maxGoals; h++) {
-                for (let a = 0; a <= maxGoals; a++) { if ((h + a) < totalValue) probUnder += poisson(h, lambdaHome) * poisson(a, lambdaAway); }
-            }
-        } else {
-            scoreHome = Math.round(lambdaHome); scoreAway = Math.round(lambdaAway);
+async function startLiveSync() {
+    try {
+        const response = await fetch("line.json?nocache=" + new Date().getTime());
+        if (!response.ok) return;
+        const data = await response.json();
+        
+        let result = [];
+        if (data && Array.isArray(data)) {
+            data.forEach((item, index) => {
+                let mDate = new Date(item.commence_time || Date.now());
+                result.push({
+                    id: item.id || "m_" + index,
+                    sport: translateToRu(item.sport_title),
+                    league: item.sport_key || "Турнир",
+                    home: item.home_team || "Команда 1",
+                    away: item.away_team || "Команда 2",
+                    odds: { P1: parseFloat(item.p1 || 1.9), X: item.x === "-" ? "-" : parseFloat(item.x || 3.2), P2: parseFloat(item.p2 || 1.9) },
+                    dateStr: mDate.toLocaleDateString("ru-RU"),
+                    time: "МАТЧ"
+                });
+            });
         }
+
+        if (result.length > 0) {
+            globalCachedMatches = result;
+            document.getElementById("counter-text").innerText = `АВТОПИЛОТ АКТИВЕН // ВСЕГО НАСТОЯЩИХ МАТЧЕЙ В СЕТКЕ: ${globalCachedMatches.length}`;
+            renderMatches();
+        }
+    } catch (e) {
+        document.getElementById("counter-text").innerText = "ОБНОВЛЕНИЕ ДАННЫХ ЛИНИИ РОБОТОМ...";
     }
-    
-    let probOver = 1 - probUnder;
-    let final100PercentVerdict = "X";
-    let maxWinProb = Math.max(fairP1, fairP2, probOver, probUnder);
-
-    if (maxWinProb === fairP1) final100PercentVerdict = "П1";
-    else if (maxWinProb === fairP2) final100PercentVerdict = "П2";
-    else if (maxWinProb === probOver) final100PercentVerdict = "ТБ " + totalValue;
-    else if (maxWinProb === probUnder) final100PercentVerdict = "ТМ " + totalValue;
-
-    return {
-        ...match, margin: (margin * 100).toFixed(2) + "%", isTennis, isTwoWay,
-        p1Prob: (fairP1 * 100).toFixed(1) + "%", p2Prob: (fairP2 * 100).toFixed(1) + "%", xProb: isTwoWay ? "—" : (fairX * 100).toFixed(1) + "%",
-        dc1X: isTwoWay ? "—" : ((fairP1 + fairX) * 100).toFixed(1) + "%", dc12: isTwoWay ? "—" : ((fairP1 + fairP2) * 100).toFixed(1) + "%", dcX2: isTwoWay ? "—" : ((fairX + fairP2) * 100).toFixed(1) + "%",
-        tValue: totalValue, tOver: (probOver * 100).toFixed(1) + "%", tUnder: (probUnder * 100).toFixed(1) + "%",
-        exactScore: isTennis ? `${scoreHome} : ${scoreAway} (по сетам)` : `${scoreHome} : ${scoreAway}`,
-        botFinalVerdict: final100PercentVerdict
-    };
 }
+
+function renderMatches() {
+    const listContainer = document.getElementById("left-matches-list");
+    if (!globalCachedMatches || globalCachedMatches.length === 0) return;
+    let filtered = globalCachedMatches.filter(m => {
+        let searchStr = (m.home + " " + m.away + " " + m.league + " " + m.sport).toLowerCase();
+        return searchStr.includes(currentSearchQuery.toLowerCase());
+    });
+    if (filtered.length === 0) { listContainer.innerHTML = '<div class="placeholder-text">Матчи не найдены...</div>'; return; }
+    listContainer.innerHTML = filtered.map(m => `
+        <div class="match-card" onclick="selectMatch('${m.id}')">
+            <div class="match-header"><span>${m.sport.toUpperCase()} | ${m.league}</span><strong>${m.dateStr}</strong></div>
+            <div class="teams">${m.home} — ${m.away}</div>
+        </div>
+    `).join('');
+}
+
+function selectMatch(id) { selectedMatchId = id; updateVerdictPanel(); }
+
+function updateVerdictPanel() {
+    const box = document.getElementById("right-verdict-box");
+    const rawMatch = globalCachedMatches.find(m => m.id == selectedMatchId);
+    if (!rawMatch) return;
+    const match = run50BotsConsilium(rawMatch);
+    box.className = "panel-right-side";
+    
+    let doubleChanceBlock = match.isTennis ? "" : `
+        <div class="market-section">
+            <div class="market-title">Двойной шанс</div>
+            <div class="stats-row"><span>1X (Победа 1 или ничья):</span><strong>${match.dc1X}</strong></div>
+            <div class="stats-row"><span>12 (Победа любой стороны):</span><strong>${match.dc12}</strong></div>
+            <div class="stats-row"><span>X2 (Ничья или победа 2):</span><strong>${match.dcX2}</strong></div>
+        </div>
+    `;
+
+    box.innerHTML = `
+        <div class="verdict-box">
+            <div class="verdict-title">${match.home} — ${match.away}</div>
+            <div class="market-section">
+                <div class="market-title">Основной исход</div>
+                <div class="stats-row"><span>Победа П1:</span><strong>${match.p1Prob}</strong></div>
+                <div class="stats-row"><span>Ничья X:</span><strong>${match.xProb}</strong></div>
+                <div class="stats-row"><span>Победа П2:</span><strong>${match.p2Prob}</strong></div>
+            </div>
+            ${doubleChanceBlock}
+            <div class="market-section">
+                <div class="market-title">${match.isTennis ? "Тотал геймов" : "Тоталы матча"}</div>
+                <div class="stats-row"><span>Тотал больше (ТБ ${match.tValue}):</span><strong>${match.tOver}</strong></div>
+                <div class="stats-row"><span>Тотал меньше (ТМ ${match.tValue}):</span><strong>${match.tUnder}</strong></div>
+            </div>
+            <div class="market-section">
+                <div class="market-title">Математический Точный Счёт</div>
+                <div class="stats-row"><span>Прогноз:</span><strong style="color:var(--winline-orange); font-size:16px;">${match.exactScore}</strong></div>
+            </div>
+            <div class="signal-banner good">РЕКОМЕНДАЦИЯ: ${match.botFinalVerdict}</div>
+        </div>
+    `;
+}
+
+document.getElementById("live-search").addEventListener("input", (e) => {
+    currentSearchQuery = e.target.value; renderMatches();
+});
+window.onload = startLiveSync;
+</script>
+</body>
+</html>
