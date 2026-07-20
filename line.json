@@ -1,7 +1,7 @@
 [
     {
         "id": "slot_1",
-        "sport_title": "Football",
+        "sport_title": "Basketball",
         "sport_key": "Лига Про",
         "home_team": "Участник 1",
         "away_team": "Участник 21",
@@ -23,7 +23,7 @@
     },
     {
         "id": "slot_3",
-        "sport_title": "Football",
+        "sport_title": "Tennis",
         "sport_key": "Лига Про",
         "home_team": "Участник 3",
         "away_team": "Участник 23",
@@ -34,7 +34,7 @@
     },
     {
         "id": "slot_4",
-        "sport_title": "Tennis",
+        "sport_title": "Football",
         "sport_key": "Лига Про",
         "home_team": "Участник 4",
         "away_team": "Участник 24",
@@ -56,7 +56,7 @@
     },
     {
         "id": "slot_6",
-        "sport_title": "Ice Hockey",
+        "sport_title": "Tennis",
         "sport_key": "Лига Про",
         "home_team": "Участник 6",
         "away_team": "Участник 26",
@@ -67,7 +67,7 @@
     },
     {
         "id": "slot_7",
-        "sport_title": "Football",
+        "sport_title": "Tennis",
         "sport_key": "Лига Про",
         "home_team": "Участник 7",
         "away_team": "Участник 27",
@@ -89,7 +89,7 @@
     },
     {
         "id": "slot_9",
-        "sport_title": "Tennis",
+        "sport_title": "Basketball",
         "sport_key": "Лига Про",
         "home_team": "Участник 9",
         "away_team": "Участник 29",
@@ -100,7 +100,7 @@
     },
     {
         "id": "slot_10",
-        "sport_title": "Football",
+        "sport_title": "Tennis",
         "sport_key": "Лига Про",
         "home_team": "Участник 10",
         "away_team": "Участник 30",
@@ -111,7 +111,7 @@
     },
     {
         "id": "slot_11",
-        "sport_title": "Ice Hockey",
+        "sport_title": "Basketball",
         "sport_key": "Лига Про",
         "home_team": "Участник 11",
         "away_team": "Участник 31",
@@ -122,7 +122,7 @@
     },
     {
         "id": "slot_12",
-        "sport_title": "Tennis",
+        "sport_title": "Football",
         "sport_key": "Лига Про",
         "home_team": "Участник 12",
         "away_team": "Участник 32",
@@ -133,7 +133,7 @@
     },
     {
         "id": "slot_13",
-        "sport_title": "Ice Hockey",
+        "sport_title": "Football",
         "sport_key": "Лига Про",
         "home_team": "Участник 13",
         "away_team": "Участник 33",
@@ -155,7 +155,7 @@
     },
     {
         "id": "slot_15",
-        "sport_title": "Tennis",
+        "sport_title": "Basketball",
         "sport_key": "Лига Про",
         "home_team": "Участник 15",
         "away_team": "Участник 35",
