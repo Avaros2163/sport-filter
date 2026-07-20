@@ -21,19 +21,19 @@ body {
 }
 header { text-align: center; border-bottom: 2px solid var(--winline-orange); padding-bottom: 8px; margin-bottom: 10px; }
 h1 { color: var(--text-title); margin: 0 0 5px 0; font-size: 22px; text-transform: uppercase; letter-spacing: 1px; }
-.live-counter-panel { background: #11141d; border: 1px solid var(--winline-orange); border-radius: 6px; padding: 6px; text-align: center; font-size: 12px; font-weight: bold; color: #fff; margin-bottom: 10px; display: flex; gap: 10px; justify-content: center; align-items: center; }
-.main-split-panel { display: flex; flex: 1; gap: 15px; overflow: hidden; height: calc(100% - 80px); }
+.live-counter-panel { background: #11141d; border: 1px solid var(--winline-orange); border-radius: 6px; padding: 10px; text-align: center; font-size: 13px; font-weight: bold; color: #fff; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.input-container { display: flex; width: 100%; gap: 10px; max-width: 800px; }
+.winline-textarea { flex: 1; height: 38px; background: #060709; border: 1px solid var(--factor-border); border-radius: 6px; color: #fff; padding: 8px 12px; font-size: 12px; resize: none; outline: none; }
+.winline-textarea:focus { border-color: var(--winline-orange); }
+.import-btn { background: var(--winline-orange); border: none; border-radius: 6px; color: #fff; font-weight: bold; padding: 0 20px; cursor: pointer; font-size: 12px; text-transform: uppercase; transition: background 0.2s; }
+.import-btn:hover { background: #e04f00; }
+.main-split-panel { display: flex; flex: 1; gap: 15px; overflow: hidden; height: calc(100% - 110px); }
 .panel-left-side { flex: 1; width: 45%; display: flex; flex-direction: column; gap: 10px; height: 100%; }
 .panel-right-side { flex: 1.2; width: 55%; border-radius: 8px; padding: 15px; overflow-y: auto; background: #10121a; border: 1px solid var(--factor-border); height: 100%; box-sizing: border-box; }
 .matches-scroll-container { flex: 1; overflow-y: auto; background: #060709; border: 1px solid var(--factor-border); border-radius: 8px; padding: 10px; box-sizing: border-box; }
-.search-bar-container { display: flex; width: 100%; gap: 10px; }
-.search-input {
-    width: 100%; padding: 12px 15px; font-size: 14px;
-    background-color: var(--card-bg); border: 1px solid var(--factor-border);
-    border-radius: 8px; color: #fff; outline: none;
-}
+.search-bar-container { display: flex; width: 100%; }
+.search-input { width: 100%; padding: 12px 15px; font-size: 14px; background-color: var(--card-bg); border: 1px solid var(--factor-border); border-radius: 8px; color: #fff; outline: none; }
 .search-input:focus { border-color: var(--winline-orange); }
-.paste-area { width: 150px; background: #1a1f2c; border: 1px dashed var(--winline-orange); border-radius: 8px; color: #8a99ad; font-size: 11px; padding: 5px; text-align: center; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .column-title { font-size: 13px; font-weight: bold; color: var(--text-title); border-bottom: 1px solid var(--factor-border); padding-bottom: 6px; text-transform: uppercase; margin: 0; }
 .match-card { background: var(--card-bg); padding: 15px; margin-bottom: 8px; border-radius: 6px; border-left: 5px solid #475569; cursor: pointer; display: flex; flex-direction: column; transition: all 0.2s; }
 .match-card:hover { border-left-color: var(--winline-orange); background: #151924; }
@@ -54,15 +54,18 @@ h1 { color: var(--text-title); margin: 0 0 5px 0; font-size: 22px; text-transfor
 <body>
 <div class="app-wrapper">
     <header><h1>Многофакторный ИИ-Фильтр Прогнозирования Исходных Маркетов</h1></header>
-    <div class="live-counter-panel" id="counter-text">
-        <span>СКОПИРУЙТЕ ТЕКСТ С WINLINE.RU/STAVKI И НАЖМИТЕ КНОПКУ СПРАВА ➡️</span>
-        <button class="paste-area" onclick="handleTextLoad()">КЛИК ДЛЯ ИМПОРТА ЛИНИИ</button>
+    <div class="live-counter-panel" id="status-panel">
+        <div id="counter-text">ОЖИДАНИЕ ИМПОРТА: Скопируйте данные с winline.ru (Ctrl+A -> Ctrl+C), вставьте в поле ниже и нажмите кнопку</div>
+        <div class="input-container">
+            <textarea id="winline-text-input" class="winline-textarea" placeholder="Вставьте скопированный текст сюда (Ctrl+V)..."></textarea>
+            <button class="import-btn" onclick="processWinlineText()">Загрузить линию</button>
+        </div>
     </div>
     <div class="main-split-panel">
         <div class="panel-left-side">
             <div class="search-bar-container"><input type="text" id="live-search" class="search-input" placeholder="Поиск матча, лиги или игрока в левой колонке..."></div>
             <div class="column-title">Всемирная Сетка LIVE и Прематч (7 дней)</div>
-            <div id="left-matches-list" class="matches-scroll-container"><div class="placeholder-text">Ожидание текстового импорта матчей...</div></div>
+            <div id="left-matches-list" class="matches-scroll-container"><div class="placeholder-text">Вставьте текст линии в верхнее поле для вывода реальных игр...</div></div>
         </div>
         <div id="right-verdict-box" class="panel-right-side placeholder-text">Выберите любой матч из левой панели для запуска консилиума 50 ИИ-ботов...</div>
     </div>
@@ -116,63 +119,72 @@ function run50BotsConsilium(match) {
         botFinalVerdict: final100PercentVerdict
     };
 }
-async function handleTextLoad() {
-    // Веб-приложение запрашивает доступ к буферу обмена пользователя
-    try {
-        const rawText = await navigator.clipboard.readText();
-        if (!rawText) { alert("Буфер обмена пуст! Сначала скопируйте текст со страницы Winline."); return; }
+function processWinlineText() {
+    const rawText = document.getElementById("winline-text-input").value;
+    if (!rawText.trim()) { alert("Поле пустое! Пожалуйста, вставьте текст."); return; }
+    
+    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    let result = [];
+    let currentSport = "Футбол";
+    
+    for (let i = 0; i < lines.length - 1; i++) {
+        let line = lines[i];
         
-        const lines = rawText.split("\n");
-        let result = [];
-        let currentSport = "Футбол";
+        if (/футбол/i.test(line)) currentSport = "Футбол";
+        else if (/теннис/i.test(line)) currentSport = "Теннис";
+        else if (/хоккей/i.test(line)) currentSport = "Хоккей";
+        else if (/баскетбол/i.test(line)) currentSport = "Баскетбол";
         
-        for (let i = 0; i < lines.length - 4; i++) {
-            let line = lines[i].trim();
-            
-            if (line.includes("Футбол")) currentSport = "Футбол";
-            else if (line.includes("Теннис")) currentSport = "Теннис";
-            else if (line.includes("Хоккей")) currentSport = "Хоккей";
-            else if (line.includes("Баскетбол")) currentSport = "Баскетбол";
-            
-            if (line.includes(" — ") && !line.startsWith("http")) {
-                let teams = line.split(" — ");
-                if (teams.length === 2) {
-                    let p1 = 1.95, x = 3.40, p2 = 1.95;
-                    try {
-                        let val1 = lines[i+1].trim().replace(",", ".");
-                        let val2 = lines[i+2].trim().replace(",", ".");
-                        let val3 = lines[i+3].trim().replace(",", ".");
-                        if (!isNaN(parseFloat(val1))) p1 = parseFloat(val1);
-                        if (!isNaN(parseFloat(val2))) x = parseFloat(val2);
-                        if (!isNaN(parseFloat(val3))) p2 = parseFloat(val3);
-                    } catch(e){}
-                    
-                    result.push({
-                        id: "paste_" + i + "_" + new Date().getTime(),
-                        sport: currentSport,
-                        league: "Winline Импорт",
-                        home: teams[0].trim(),
-                        away: teams[1].trim(),
-                        odds: { P1: p1, X: currentSport === "Теннис" || currentSport === "Баскетбол" ? "-" : x, P2: p2 },
-                        dateStr: "СЕГОДНЯ"
-                    });
+        // Бронебойный разделитель: ловим длинное тире, дефисы и короткие знаки
+        if (line.includes(" — ") || line.includes(" - ") || line.includes(" – ") || line.includes("—")) {
+            let parts = line.split(/\s*[-—–]\s*/);
+            if (parts.length >= 2) {
+                let home = parts[0].trim();
+                let away = parts[1].trim();
+                
+                if (home.toLowerCase().includes("матчи") || home.toLowerCase().includes("ставки") || home.length < 2 || away.length < 2) continue;
+                if (/^\d+$/.test(home) || /^\d+$/.test(away)) continue;
+                
+                let p1 = 1.95, x = 3.40, p2 = 1.95;
+                let foundOdds = 0;
+                
+                // Извлекаем коэффициенты БК, идущие ниже по тексту ленты
+                for (let j = 1; j <= 5; j++) {
+                    if (lines[i+j]) {
+                        let val = lines[i+j].replace(",", ".").trim();
+                        if (!isNaN(parseFloat(val)) && parseFloat(val) > 1.01 && parseFloat(val) < 50.0) {
+                            if (foundOdds === 0) p1 = parseFloat(val);
+                            else if (foundOdds === 1) x = parseFloat(val);
+                            else if (foundOdds === 2) p2 = parseFloat(val);
+                            foundOdds++;
+                        }
+                    }
                 }
+                
+                if (currentSport === "Теннис" || currentSport === "Баскетбол") {
+                    if (foundOdds === 2) { p2 = x; x = "-"; }
+                }
+                
+                result.push({
+                    id: "wl_" + i + "_" + new Date().getTime(),
+                    sport: currentSport,
+                    league: "Winline Импорт",
+                    home: home,
+                    away: away,
+                    odds: { P1: p1, X: currentSport === "Теннис" || currentSport === "Баскетбол" ? "-" : x, P2: p2 },
+                    dateStr: "ЛИНИЯ"
+                });
             }
         }
-        
-        if (result.length > 0) {
-            globalCachedMatches = result;
-            document.getElementById("counter-text").innerHTML = `<span>ИМПОРТ ЗАВЕРШЕН УСПЕШНО // ВСЕГО МАТЧЕЙ В СЕТКЕ: ${globalCachedMatches.length}</span>`;
-            renderMatches();
-        } else {
-            alert("Робот не нашёл матчей в скопированном тексте. Убедитесь, что скопировали страницу полностью.");
-        }
-    } catch (err) {
-        let txt = prompt("Браузер заблокировал авто-вставку. Пожалуйста, вставьте скопированный с Winline текст сюда:");
-        if (txt) {
-            // Резервный ручной ввод, если браузер просит подтверждение прав
-            alert("Текст принят, обрабатываю линию...");
-        }
+    }
+    
+    if (result.length > 0) {
+        globalCachedMatches = result;
+        document.getElementById("counter-text").innerText = `ЖИВАЯ ЛИНЕЙКА WINLINE АКТИВНА // ВСЕГО НАСТОЯЩИХ МАТЧЕЙ В СЕТКЕ: ${globalCachedMatches.length}`;
+        document.getElementById("winline-text-input").value = ""; // Очищаем поле
+        renderMatches();
+    } else {
+        alert("Робот не смог распознать матчи в тексте. Пожалуйста, откройте страницу winline.ru/stavki, выделите абсолютно весь текст (Ctrl+A), скопируйте (Ctrl+C) и вставьте в наше поле.");
     }
 }
 
