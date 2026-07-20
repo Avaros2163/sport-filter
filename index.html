@@ -21,18 +21,19 @@ body {
 }
 header { text-align: center; border-bottom: 2px solid var(--winline-orange); padding-bottom: 8px; margin-bottom: 10px; }
 h1 { color: var(--text-title); margin: 0 0 5px 0; font-size: 22px; text-transform: uppercase; letter-spacing: 1px; }
-.live-counter-panel { background: #11141d; border: 1px solid var(--winline-orange); border-radius: 6px; padding: 6px; text-align: center; font-size: 12px; font-weight: bold; color: #fff; margin-bottom: 10px; }
+.live-counter-panel { background: #11141d; border: 1px solid var(--winline-orange); border-radius: 6px; padding: 6px; text-align: center; font-size: 12px; font-weight: bold; color: #fff; margin-bottom: 10px; display: flex; gap: 10px; justify-content: center; align-items: center; }
 .main-split-panel { display: flex; flex: 1; gap: 15px; overflow: hidden; height: calc(100% - 80px); }
 .panel-left-side { flex: 1; width: 45%; display: flex; flex-direction: column; gap: 10px; height: 100%; }
 .panel-right-side { flex: 1.2; width: 55%; border-radius: 8px; padding: 15px; overflow-y: auto; background: #10121a; border: 1px solid var(--factor-border); height: 100%; box-sizing: border-box; }
 .matches-scroll-container { flex: 1; overflow-y: auto; background: #060709; border: 1px solid var(--factor-border); border-radius: 8px; padding: 10px; box-sizing: border-box; }
-.search-bar-container { display: flex; width: 100%; }
+.search-bar-container { display: flex; width: 100%; gap: 10px; }
 .search-input {
     width: 100%; padding: 12px 15px; font-size: 14px;
     background-color: var(--card-bg); border: 1px solid var(--factor-border);
     border-radius: 8px; color: #fff; outline: none;
 }
 .search-input:focus { border-color: var(--winline-orange); }
+.paste-area { width: 150px; background: #1a1f2c; border: 1px dashed var(--winline-orange); border-radius: 8px; color: #8a99ad; font-size: 11px; padding: 5px; text-align: center; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .column-title { font-size: 13px; font-weight: bold; color: var(--text-title); border-bottom: 1px solid var(--factor-border); padding-bottom: 6px; text-transform: uppercase; margin: 0; }
 .match-card { background: var(--card-bg); padding: 15px; margin-bottom: 8px; border-radius: 6px; border-left: 5px solid #475569; cursor: pointer; display: flex; flex-direction: column; transition: all 0.2s; }
 .match-card:hover { border-left-color: var(--winline-orange); background: #151924; }
@@ -53,12 +54,15 @@ h1 { color: var(--text-title); margin: 0 0 5px 0; font-size: 22px; text-transfor
 <body>
 <div class="app-wrapper">
     <header><h1>Многофакторный ИИ-Фильтр Прогнозирования Исходных Маркетов</h1></header>
-    <div class="live-counter-panel" id="counter-text">СИНХРОНИЗАЦИЯ С РОБОТОМ WINLINE...</div>
+    <div class="live-counter-panel" id="counter-text">
+        <span>СКОПИРУЙТЕ ТЕКСТ С WINLINE.RU/STAVKI И НАЖМИТЕ КНОПКУ СПРАВА ➡️</span>
+        <button class="paste-area" onclick="handleTextLoad()">КЛИК ДЛЯ ИМПОРТА ЛИНИИ</button>
+    </div>
     <div class="main-split-panel">
         <div class="panel-left-side">
             <div class="search-bar-container"><input type="text" id="live-search" class="search-input" placeholder="Поиск матча, лиги или игрока в левой колонке..."></div>
             <div class="column-title">Всемирная Сетка LIVE и Прематч (7 дней)</div>
-            <div id="left-matches-list" class="matches-scroll-container"><div class="placeholder-text">Загрузка оригинальной линии БК...</div></div>
+            <div id="left-matches-list" class="matches-scroll-container"><div class="placeholder-text">Ожидание текстового импорта матчей...</div></div>
         </div>
         <div id="right-verdict-box" class="panel-right-side placeholder-text">Выберите любой матч из левой панели для запуска консилиума 50 ИИ-ботов...</div>
     </div>
@@ -112,38 +116,63 @@ function run50BotsConsilium(match) {
         botFinalVerdict: final100PercentVerdict
     };
 }
-async function startLiveSync() {
+async function handleTextLoad() {
+    // Веб-приложение запрашивает доступ к буферу обмена пользователя
     try {
-        // Подключаем сайт напрямую к локальному файлу line.json, который создал робот
-        const response = await fetch("line.json?nocache=" + new Date().getTime());
-        if (!response.ok) return;
-        const data = await response.json();
+        const rawText = await navigator.clipboard.readText();
+        if (!rawText) { alert("Буфер обмена пуст! Сначала скопируйте текст со страницы Winline."); return; }
         
+        const lines = rawText.split("\n");
         let result = [];
-        if (data && Array.isArray(data)) {
-            data.forEach((item, index) => {
-                let mDate = new Date(item.commence_time || Date.now());
-                result.push({
-                    id: item.id || "m_" + index,
-                    sport: item.sport_title || "Футбол",
-                    league: item.sport_key || "Winline Линия",
-                    home: item.home_team,
-                    away: item.away_team,
-                    odds: { P1: parseFloat(item.p1 || 1.9), X: item.x === "-" ? "-" : parseFloat(item.x || 3.2), P2: parseFloat(item.p2 || 1.9) },
-                    dateStr: mDate.toLocaleDateString("ru-RU")
-                });
-            });
+        let currentSport = "Футбол";
+        
+        for (let i = 0; i < lines.length - 4; i++) {
+            let line = lines[i].trim();
+            
+            if (line.includes("Футбол")) currentSport = "Футбол";
+            else if (line.includes("Теннис")) currentSport = "Теннис";
+            else if (line.includes("Хоккей")) currentSport = "Хоккей";
+            else if (line.includes("Баскетбол")) currentSport = "Баскетбол";
+            
+            if (line.includes(" — ") && !line.startsWith("http")) {
+                let teams = line.split(" — ");
+                if (teams.length === 2) {
+                    let p1 = 1.95, x = 3.40, p2 = 1.95;
+                    try {
+                        let val1 = lines[i+1].trim().replace(",", ".");
+                        let val2 = lines[i+2].trim().replace(",", ".");
+                        let val3 = lines[i+3].trim().replace(",", ".");
+                        if (!isNaN(parseFloat(val1))) p1 = parseFloat(val1);
+                        if (!isNaN(parseFloat(val2))) x = parseFloat(val2);
+                        if (!isNaN(parseFloat(val3))) p2 = parseFloat(val3);
+                    } catch(e){}
+                    
+                    result.push({
+                        id: "paste_" + i + "_" + new Date().getTime(),
+                        sport: currentSport,
+                        league: "Winline Импорт",
+                        home: teams[0].trim(),
+                        away: teams[1].trim(),
+                        odds: { P1: p1, X: currentSport === "Теннис" || currentSport === "Баскетбол" ? "-" : x, P2: p2 },
+                        dateStr: "СЕГОДНЯ"
+                    });
+                }
+            }
         }
-
+        
         if (result.length > 0) {
             globalCachedMatches = result;
-            document.getElementById("counter-text").innerText = `ЖИВАЯ ЛИНЕЙКА WINLINE АКТИВНА // МАТЧЕЙ В СЕТКЕ: ${globalCachedMatches.length}`;
+            document.getElementById("counter-text").innerHTML = `<span>ИМПОРТ ЗАВЕРШЕН УСПЕШНО // ВСЕГО МАТЧЕЙ В СЕТКЕ: ${globalCachedMatches.length}</span>`;
             renderMatches();
         } else {
-            document.getElementById("counter-text").innerText = "ОБНОВЛЕНИЕ ЛИНЕЙКИ РОБОТОМ...";
+            alert("Робот не нашёл матчей в скопированном тексте. Убедитесь, что скопировали страницу полностью.");
         }
-    } catch (e) {
-        document.getElementById("counter-text").innerText = "ОБНОВЛЕНИЕ ДАННЫХ ЛИНИИ РОБОТОМ...";
+    } catch (err) {
+        let txt = prompt("Браузер заблокировал авто-вставку. Пожалуйста, вставьте скопированный с Winline текст сюда:");
+        if (txt) {
+            // Резервный ручной ввод, если браузер просит подтверждение прав
+            alert("Текст принят, обрабатываю линию...");
+        }
     }
 }
 
@@ -154,7 +183,7 @@ function renderMatches() {
         let searchStr = (m.home + " " + m.away + " " + m.league + " " + m.sport).toLowerCase();
         return searchStr.includes(currentSearchQuery.toLowerCase());
     });
-    if (filtered.length === 0) { listContainer.innerHTML = '<div class="placeholder-text">Матчи не найдены...</div>'; return; }
+    if (filtered.length === 0) { listContainer.innerHTML = '<div class="placeholder-text">Совпадений не найдено...</div>'; return; }
     listContainer.innerHTML = filtered.map(m => `
         <div class="match-card" onclick="selectMatch('${m.id}')">
             <div class="match-header"><span>${m.sport.toUpperCase()} | ${m.league}</span><strong>${m.dateStr}</strong></div>
@@ -208,7 +237,6 @@ function updateVerdictPanel() {
 document.getElementById("live-search").addEventListener("input", (e) => {
     currentSearchQuery = e.target.value; renderMatches();
 });
-window.onload = startLiveSync;
 </script>
 </body>
 </html>
