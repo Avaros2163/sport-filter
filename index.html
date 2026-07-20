@@ -55,9 +55,9 @@ h1 { color: var(--text-title); margin: 0 0 5px 0; font-size: 22px; text-transfor
 <div class="app-wrapper">
     <header><h1>Многофакторный ИИ-Фильтр Прогнозирования Исходных Маркетов</h1></header>
     <div class="live-counter-panel" id="status-panel">
-        <div id="counter-text">ОЖИДАНИЕ ИМПОРТА: Скопируйте данные с winline.ru (Ctrl+A -> Ctrl+C), вставьте в поле ниже и нажмите кнопку</div>
+        <div id="counter-text">ИНТЕЛЛЕКТУАЛЬНЫЙ АВТОПИЛОТ: Выделите всю страницу Winline (Ctrl+A -> Ctrl+C), вставьте текст в поле ниже и нажмите кнопку</div>
         <div class="input-container">
-            <textarea id="winline-text-input" class="winline-textarea" placeholder="Вставьте скопированный текст сюда (Ctrl+V)..."></textarea>
+            <textarea id="winline-text-input" class="winline-textarea" placeholder="Вставьте скопированную ленту матчей сюда (Ctrl+V)..."></textarea>
             <button class="import-btn" onclick="processWinlineText()">Загрузить линию</button>
         </div>
     </div>
@@ -65,7 +65,7 @@ h1 { color: var(--text-title); margin: 0 0 5px 0; font-size: 22px; text-transfor
         <div class="panel-left-side">
             <div class="search-bar-container"><input type="text" id="live-search" class="search-input" placeholder="Поиск матча, лиги или игрока в левой колонке..."></div>
             <div class="column-title">Всемирная Сетка LIVE и Прематч (7 дней)</div>
-            <div id="left-matches-list" class="matches-scroll-container"><div class="placeholder-text">Вставьте текст линии в верхнее поле для вывода реальных игр...</div></div>
+            <div id="left-matches-list" class="matches-scroll-container"><div class="placeholder-text">Скопируйте и вставьте текст линии сверху для автоматического распознавания...</div></div>
         </div>
         <div id="right-verdict-box" class="panel-right-side placeholder-text">Выберите любой матч из левой панели для запуска консилиума 50 ИИ-ботов...</div>
     </div>
@@ -121,70 +121,79 @@ function run50BotsConsilium(match) {
 }
 function processWinlineText() {
     const rawText = document.getElementById("winline-text-input").value;
-    if (!rawText.trim()) { alert("Поле пустое! Пожалуйста, вставьте текст."); return; }
+    if (!rawText.trim()) { alert("Поле ввода пустое!"); return; }
     
+    // Режем на чистые строки и убираем пробелы по краям
     const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
     let result = [];
     let currentSport = "Футбол";
+    let currentLeague = "Winline Линия";
     
-    for (let i = 0; i < lines.length - 1; i++) {
+    // Интеллектуальный ИИ-сканер ленты Winline
+    for (let i = 0; i < lines.length - 5; i++) {
         let line = lines[i];
         
-        if (/футбол/i.test(line)) currentSport = "Футбол";
-        else if (/теннис/i.test(line)) currentSport = "Теннис";
-        else if (/хоккей/i.test(line)) currentSport = "Хоккей";
-        else if (/баскетбол/i.test(line)) currentSport = "Баскетбол";
+        // Переключаем виды спорта на лету при чтении ленты
+        if (/футбол/i.test(line)) { currentSport = "Футбол"; continue; }
+        if (/теннис/i.test(line)) { currentSport = "Теннис"; continue; }
+        if (/хоккей/i.test(line)) { currentSport = "Хоккей"; continue; }
+        if (/баскетбол/i.test(line)) { currentSport = "Баскетбол"; continue; }
         
-        // Бронебойный разделитель: ловим длинное тире, дефисы и короткие знаки
-        if (line.includes(" — ") || line.includes(" - ") || line.includes(" – ") || line.includes("—")) {
-            let parts = line.split(/\s*[-—–]\s*/);
-            if (parts.length >= 2) {
-                let home = parts[0].trim();
-                let away = parts[1].trim();
-                
-                if (home.toLowerCase().includes("матчи") || home.toLowerCase().includes("ставки") || home.length < 2 || away.length < 2) continue;
-                if (/^\d+$/.test(home) || /^\d+$/.test(away)) continue;
-                
-                let p1 = 1.95, x = 3.40, p2 = 1.95;
-                let foundOdds = 0;
-                
-                // Извлекаем коэффициенты БК, идущие ниже по тексту ленты
-                for (let j = 1; j <= 5; j++) {
-                    if (lines[i+j]) {
-                        let val = lines[i+j].replace(",", ".").trim();
-                        if (!isNaN(parseFloat(val)) && parseFloat(val) > 1.01 && parseFloat(val) < 50.0) {
-                            if (foundOdds === 0) p1 = parseFloat(val);
-                            else if (foundOdds === 1) x = parseFloat(val);
-                            else if (foundOdds === 2) p2 = parseFloat(val);
-                            foundOdds++;
-                        }
+        // Определяем название чемпионатов и лиг
+        if (line.includes(" | ") || (line.startsWith("⚽") || line.startsWith("🎾") || line.startsWith("🏒"))) {
+            currentLeague = line.replace(/[⚽🎾🏒🏀]/g, "").trim();
+            continue;
+        }
+        
+        // Умный поиск: если текущая строка и следующая - это текст (команды), а дальше идут три цифры (коэффициенты)
+        let isTeam1 = isNaN(parseFloat(line)) && line.length > 2;
+        let isTeam2 = isNaN(parseFloat(lines[i+1])) && lines[i+1] ? lines[i+1].length > 2 : false;
+        
+        // Исключаем мусорные интерфейсные слова самого сайта Winline
+        if (isTeam1 && isTeam2) {
+            if (/трансляция|видео|матч|исход|фора|тотал|купон|в игре|прогноз|лига/i.test(line) || /трансляция|видео|матч|исход|фора|тотал|купон|в игре|прогноз|лига/i.test(lines[i+1])) continue;
+            
+            let home = line;
+            let away = lines[i+1];
+            
+            // Проверяем наличие коэффициентов на победу в следующих 4 строках
+            let coefs = [];
+            for (let j = 2; j <= 5; j++) {
+                if (lines[i+j]) {
+                    let val = lines[i+j].replace(",", ".").trim();
+                    if (!isNaN(parseFloat(val)) && parseFloat(val) >= 1.01 && parseFloat(val) <= 40.0) {
+                        coefs.push(parseFloat(val));
                     }
                 }
-                
-                if (currentSport === "Теннис" || currentSport === "Баскетбол") {
-                    if (foundOdds === 2) { p2 = x; x = "-"; }
-                }
+            }
+            
+            // Если нашли кэфы - формируем полноценный реальный матч!
+            if (coefs.length >= 2) {
+                let p1 = coefs[0];
+                let x = currentSport === "Теннис" || currentSport === "Баскетбол" ? "-" : (coefs[1] || 3.40);
+                let p2 = currentSport === "Теннис" || currentSport === "Баскетбол" ? (coefs[1] || 1.90) : (coefs[2] || 1.90);
                 
                 result.push({
-                    id: "wl_" + i + "_" + new Date().getTime(),
+                    id: "wl_scan_" + i + "_" + new Date().getTime(),
                     sport: currentSport,
-                    league: "Winline Импорт",
+                    league: currentLeague,
                     home: home,
                     away: away,
-                    odds: { P1: p1, X: currentSport === "Теннис" || currentSport === "Баскетбол" ? "-" : x, P2: p2 },
-                    dateStr: "ЛИНИЯ"
+                    odds: { P1: p1, X: x, P2: p2 },
+                    dateStr: "СЕГОДНЯ"
                 });
+                i += 3; // Сдвигаем маркер сканирования, чтобы не дублировать кэфы
             }
         }
     }
     
     if (result.length > 0) {
         globalCachedMatches = result;
-        document.getElementById("counter-text").innerText = `ЖИВАЯ ЛИНЕЙКА WINLINE АКТИВНА // ВСЕГО НАСТОЯЩИХ МАТЧЕЙ В СЕТКЕ: ${globalCachedMatches.length}`;
-        document.getElementById("winline-text-input").value = ""; // Очищаем поле
+        document.getElementById("counter-text").innerText = `РАСПОЗНАВАНИЕ ЗАВЕРШЕНО // ВСЕГО РЕАЛЬНЫХ МАТЧЕЙ С WINLINE: ${globalCachedMatches.length}`;
+        document.getElementById("winline-text-input").value = ""; // Очищаем поле ввода
         renderMatches();
     } else {
-        alert("Робот не смог распознать матчи в тексте. Пожалуйста, откройте страницу winline.ru/stavki, выделите абсолютно весь текст (Ctrl+A), скопируйте (Ctrl+C) и вставьте в наше поле.");
+        alert("Сканер не смог вычленить матчи. Убедитесь, что вы зашли на winline.ru/stavki, зажали Ctrl+A, скопировали через Ctrl+C и вставили всё содержимое страницы в поле ввода.");
     }
 }
 
