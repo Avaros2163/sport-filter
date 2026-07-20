@@ -3,44 +3,44 @@
         "id": "ai_1",
         "sport_title": "Football",
         "sport_key": "Премьер-Лига",
-        "home_team": "Зенит",
-        "away_team": "Спартак",
-        "commence_time": "2026-07-20T17:30:00Z",
-        "p1": 2.1,
-        "x": 3.4,
-        "p2": 3.2
+        "home_team": "Реал Мадрид",
+        "away_team": "Барселона",
+        "commence_time": "2026-07-22T20:00:00Z",
+        "p1": 1.95,
+        "x": 3.6,
+        "p2": 3.4
     },
     {
         "id": "ai_2",
+        "sport_title": "Football",
+        "sport_key": "АПЛ",
+        "home_team": "Манчестер Сити",
+        "away_team": "Ливерпуль",
+        "commence_time": "2026-07-23T19:00:00Z",
+        "p1": 1.85,
+        "x": 3.75,
+        "p2": 3.8
+    },
+    {
+        "id": "ai_3",
         "sport_title": "Ice Hockey",
         "sport_key": "КХЛ",
         "home_team": "ЦСКА",
         "away_team": "СКА",
-        "commence_time": "2026-07-20T16:00:00Z",
+        "commence_time": "2026-07-22T16:00:00Z",
         "p1": 2.25,
         "x": 4.1,
         "p2": 2.5
     },
     {
-        "id": "ai_3",
+        "id": "ai_4",
         "sport_title": "Basketball",
         "sport_key": "NBA",
         "home_team": "Лейкерс",
         "away_team": "Бостон",
-        "commence_time": "2026-07-21T02:00:00Z",
+        "commence_time": "2026-07-24T02:00:00Z",
         "p1": 1.85,
         "x": "-",
         "p2": 1.95
-    },
-    {
-        "id": "ai_4",
-        "sport_title": "Tennis",
-        "sport_key": "ATP",
-        "home_team": "Медведев",
-        "away_team": "Алькарас",
-        "commence_time": "2026-07-21T14:00:00Z",
-        "p1": 2.4,
-        "x": "-",
-        "p2": 1.55
     }
 ]
